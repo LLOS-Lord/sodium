@@ -1,0 +1,81 @@
+plugins {
+    id 'fabric-loom' version '0.10.66'
+}
+
+apply from: "${rootProject.projectDir}/gradle/fabric.gradle"
+apply from: "${rootProject.projectDir}/gradle/java.gradle"
+
+archivesBaseName = project.archives_base_name
+version = getVersion()
+group = project.maven_group
+
+loom {
+    mixin {
+        defaultRefmapName = "mixins.sodium.refmap.json"
+    }
+
+    if (findProperty("sodium.use_custom_jvm_args") != "false") {
+        runs {
+            it.configureEach {
+                vmArgs("-Xmx3G", "-XX:+UseZGC")
+            }
+        }
+    }
+
+    accessWidenerPath.set file("src/main/resources/sodium.accesswidener")
+}
+
+configurations {
+    includeModImplementation
+    includeImplementation
+
+    include.extendsFrom includeImplementation
+    include.extendsFrom includeModImplementation
+
+    implementation.extendsFrom includeImplementation
+    modImplementation.extendsFrom includeModImplementation
+}
+
+repositories {
+    maven {
+        name = "Modrinth"
+        url = "https://api.modrinth.com/maven"
+
+        content {
+            includeGroup "maven.modrinth"
+        }
+    }
+}
+
+dependencies {
+    //to change the versions see the gradle.properties file
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Fabric API modules
+    includeModImplementation fabricApi.module("fabric-api-base", project.fabric_version)
+    includeModImplementation fabricApi.module("fabric-rendering-fluids-v1", project.fabric_version)
+    includeModImplementation fabricApi.module("fabric-rendering-data-attachment-v1", project.fabric_version)
+    includeModImplementation fabricApi.module("fabric-resource-loader-v0", project.fabric_version)
+
+    includeImplementation 'org.joml:joml:1.10.4'
+    includeImplementation project(":components:gfx")
+    includeImplementation project(":components:gfx-opengl")
+
+    if (findProperty("sodium.use_third_party_mods") != "false") {
+        modRuntime "maven.modrinth:lazydfu:0.1.2"
+        modRuntime "maven.modrinth:starlight:1.0.2+1.18.2"
+    }
+}
+
+String getVersion() {
+    String version = "${project.mod_version}+mc${project.minecraft_version}"
+
+    if (findProperty("releaseType") != "stable") {
+        version += "-unstable"
+    }
+
+    return version
+}
